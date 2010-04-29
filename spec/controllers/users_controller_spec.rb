@@ -248,6 +248,20 @@ describe UsersController do
         response.should have_tag("a[href=?]", "/users?page=2", "Next &raquo;")
       end
     end
+
+    describe "for an admin user" do
+      before(:each) do
+        admin = Factory(:user, :email => "admin@example.com", :admin => true)
+        test_sign_in(admin)
+      end
+
+      it "should see delete links" do
+        2.times { Factory(:user, :email => Factory.next(:email)) }
+        get :index 
+        response.should include_text("confirm('You sure?')")
+        response.should include_text("delete")
+      end
+    end
   end
 
   describe "DELETE 'destroy'" do
@@ -260,6 +274,15 @@ describe UsersController do
       it "should deny access" do
         delete :destroy, :id => @user
         response.should redirect_to(signin_path)
+      end
+    end
+  
+    describe "as a non-admin user" do
+      it "should NOT see delete links" do
+        test_sign_in(@user)
+        get :index
+        response.should_not include_text("confirm('You sure?')")
+        #response.should_not include_text("delete")
       end
     end
 
@@ -279,13 +302,26 @@ describe UsersController do
         User.should_receive(:find).with(@user).and_return(@user)
         @user.should_receive(:destroy).and_return(@user)
       end
-
+ 
       it "should destroy the user" do
         delete :destroy, :id => @user
         response.should redirect_to(users_path)
       end
     end
-  end
 
+    describe "as an admin user" do
+
+      before(:each) do
+        @admin = Factory(:user, :email => "admin@example.com", :admin => true)
+        test_sign_in(@admin)        
+        User.should_receive(:find).with(@admin).and_return(@admin) 
+      end 
+
+      it "should not destroy the admin user itself" do
+        delete :destroy, :id => @admin
+        flash[:error].should =~ /cannot delete admin users/i
+      end
+    end
+  end
 end
 

@@ -2,6 +2,7 @@ class UsersController < ApplicationController
   before_filter :authenticate, :only => [:edit, :update, :index]
   before_filter :correct_user, :only => [:edit, :update]
   before_filter :admin_user,   :only => :destroy
+  before_filter :signedin_user,:only => [:create, :new]
 
   def new
     @title = "Sign Up"
@@ -47,9 +48,15 @@ class UsersController < ApplicationController
   end
 
   def destroy
-    user = User.find(params[:id]).destroy
-    flash[:success] = "User destroyed."
-    redirect_to users_path   
+    user = User.find(params[:id])
+    if user.admin?
+      flash[:error] = "Cannot delete admin users!"
+      redirect_to users_path 
+    else
+      user.destroy
+      flash[:success] = "User destroyed."
+      redirect_to users_path   
+    end
   end
 
   private
@@ -69,5 +76,9 @@ class UsersController < ApplicationController
       else
         redirect_to signin_path
       end 
+    end
+
+    def signedin_user
+      redirect_to root_path if signed_in?
     end
 end
